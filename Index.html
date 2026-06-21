@@ -1,0 +1,207 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carbon Footprint Awareness Platform</title>
+    <!-- Accessibility: High contrast colors and clean sans-serif font for readability -->
+    <style>
+        :root {
+            --primary-color: #0f4c3a; /* High contrast dark green */
+            --bg-color: #f4f7f6;
+            --text-color: #1a1a1a;
+            --white: #ffffff;
+            --error-color: #d32f2f;
+            --focus-outline: 3px solid #ff9800; /* Clear focus indicator for keyboard users */
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 15px;
+        }
+
+        main {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            background: var(--white);
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        h1 { font-size: 1.5rem; color: var(--primary-color); margin-bottom: 0.5rem; }
+        h2 { font-size: 1.25rem; color: var(--primary-color); margin-bottom: 1rem; }
+        p { margin-bottom: 1.2rem; font-size: 0.95rem; }
+
+        /* Form Styling */
+        .form-group { margin-bottom: 1.2rem; }
+        label { display: block; font-weight: bold; margin-bottom: 0.4rem; font-size: 0.95rem; }
+        input[type="number"], select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #ccc;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        /* Accessibility: Strict focus states */
+        input:focus, select:focus, button:focus {
+            outline: var(--focus-outline);
+            border-color: var(--primary-color);
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: var(--white);
+            border: none;
+            padding: 1rem;
+            font-size: 1.1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: bold;
+        }
+
+        .hidden { display: none; }
+        #results {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background-color: #e8f5e9;
+            border-left: 5px solid var(--primary-color);
+            border-radius: 4px;
+        }
+
+        .tips-list { padding-left: 20px; font-size: 0.95rem; }
+        .tips-list li { margin-bottom: 0.5rem; }
+        .error { color: var(--error-color); font-weight: bold; font-size: 0.85rem; margin-top: 0.4rem; display: none;}
+    </style>
+</head>
+<body>
+    <main>
+        <header>
+            <h1>Carbon Footprint Calculator</h1>
+            <p>Understand your daily environmental impact. Small routine changes make a massive difference.</p>
+        </header>
+
+        <section aria-labelledby="form-heading">
+            <h2 id="form-heading" class="hidden">Calculator Form</h2>
+            <form id="carbon-form" novalidate>
+                
+                <div class="form-group">
+                    <label for="transport">Daily Transport (Kilometers):</label>
+                    <input type="number" id="transport" name="transport" min="0" step="0.1" required aria-required="true">
+                    <div id="transport-error" class="error">Please enter a valid positive number.</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="electricity">Daily Electricity Usage (kWh):</label>
+                    <input type="number" id="electricity" name="electricity" min="0" step="0.1" required aria-required="true">
+                    <div id="electricity-error" class="error">Please enter a valid positive number.</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="diet">Diet Type:</label>
+                    <select id="diet" name="diet" required aria-required="true">
+                        <option value="vegan">Vegan (Lowest Impact)</option>
+                        <option value="vegetarian">Vegetarian</option>
+                        <option value="omnivore" selected>Omnivore (Average)</option>
+                        <option value="meat-heavy">Meat-Heavy (High Impact)</option>
+                    </select>
+                </div>
+
+                <button type="submit" aria-label="Calculate your carbon footprint">Calculate Impact</button>
+            </form>
+        </section>
+
+        <!-- Results Section -->
+        <section id="results-section" class="hidden" aria-live="polite">
+            <div id="results">
+                <h2>Your Daily Footprint</h2>
+                <!-- Security: injected via textContent to prevent XSS -->
+                <p><strong id="total-emission" style="font-size: 1.5rem;">0</strong> kg of CO2e / day</p>
+                <p id="context-message" style="font-weight: bold;"></p>
+            </div>
+
+            <div style="margin-top: 1.5rem;">
+                <h2>Actionable Tips</h2>
+                <ul class="tips-list">
+                    <li><strong>Transport:</strong> Carpool, use public transit, or bike.</li>
+                    <li><strong>Energy:</strong> Switch to LEDs and unplug appliances.</li>
+                    <li><strong>Diet:</strong> Add one plant-based meal to your day.</li>
+                </ul>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // Core Calculation Logic
+        const calculateFootprint = (transportKm, electricityKwh, dietType) => {
+            const factors = {
+                transport: 0.192,
+                electricity: 0.85,
+                diet: { 'vegan': 2.5, 'vegetarian': 3.2, 'omnivore': 5.5, 'meat-heavy': 7.2 }
+            };
+            const tEmissions = transportKm * factors.transport;
+            const eEmissions = electricityKwh * factors.electricity;
+            const dEmissions = factors.diet[dietType] || factors.diet['omnivore'];
+            return Math.round((tEmissions + eEmissions + dEmissions) * 100) / 100;
+        };
+
+        const form = document.getElementById('carbon-form');
+        
+        // Security: Input Validation
+        const validateInput = (val) => {
+            const parsed = parseFloat(val);
+            return (isNaN(parsed) || parsed < 0) ? false : parsed;
+        };
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const tInput = document.getElementById('transport').value;
+            const eInput = document.getElementById('electricity').value;
+            const dInput = document.getElementById('diet').value;
+
+            const transport = validateInput(tInput);
+            const electricity = validateInput(eInput);
+            let isValid = true;
+
+            if (transport === false) {
+                document.getElementById('transport-error').style.display = 'block'; isValid = false;
+            } else { document.getElementById('transport-error').style.display = 'none'; }
+
+            if (electricity === false) {
+                document.getElementById('electricity-error').style.display = 'block'; isValid = false;
+            } else { document.getElementById('electricity-error').style.display = 'none'; }
+
+            if (!isValid) return;
+
+            const total = calculateFootprint(transport, electricity, dInput);
+            
+            // Security: Use textContent
+            document.getElementById('total-emission').textContent = total;
+            const msg = document.getElementById('context-message');
+            
+            if(total < 10) msg.textContent = "Great job! Your footprint is lower than average.";
+            else if (total < 20) msg.textContent = "You are around the global average.";
+            else msg.textContent = "Your footprint is high. Check the tips below to improve.";
+
+            document.getElementById('results-section').classList.remove('hidden');
+            document.getElementById('results-section').scrollIntoView({ behavior: 'smooth' });
+        });
+    </script>
+</body>
+</html>
+
+
+
